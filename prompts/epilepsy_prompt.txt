@@ -1,0 +1,18 @@
+You are tasked with extracting specific patient information from a provided medical record text.
+
+Your goal is to accurately identify and extract the following data points:
+	1.	Patient ID
+	2.	Age of the patient
+	3.	Diagnosis status:
+	•	Indicate if the patient has a diagnosis of epilepsy (Yes/No)
+	•	If Yes, specify if the epilepsy is focal or generalized (Yes/No for each type)
+	4.	Current medications:
+	•	List the medications the patient is currently taking, including their respective doses if available.
+	5.	Previous medications:
+	•	Identify any medications the patient has previously taken but stopped, including:
+	•	The name of the medication
+	•	The reason for stopping each medication
+	6.	Seizure frequency:
+	•	Indicate the frequency of seizures experienced by the patient, measured in times per month.
+
+Each data point should be clearly labeled. If any information is missing or not available, indicate this explicitly.
