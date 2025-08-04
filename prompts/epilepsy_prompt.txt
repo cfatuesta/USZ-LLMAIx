@@ -1,18 +1,95 @@
 You are tasked with extracting specific patient information from a provided medical record text.
 
-Your goal is to accurately identify and extract the following data points:
-	1.	Patient ID
-	2.	Age of the patient
-	3.	Diagnosis status:
-	•	Indicate if the patient has a diagnosis of epilepsy (Yes/No)
-	•	If Yes, specify if the epilepsy is focal or generalized (Yes/No for each type)
-	4.	Current medications:
-	•	List the medications the patient is currently taking, including their respective doses if available.
-	5.	Previous medications:
-	•	Identify any medications the patient has previously taken but stopped, including:
-	•	The name of the medication
-	•	The reason for stopping each medication
-	6.	Seizure frequency:
-	•	Indicate the frequency of seizures experienced by the patient, measured in times per month.
+The input consists of a concatenation of multiple clinical reports from the same patient, sometimes across different dates. Your goal is to extract accurate and comprehensive information for each of the fields below, selecting the most appropriate value based on the relevant time context.
 
-Each data point should be clearly labeled. If any information is missing or not available, indicate this explicitly.
+Carefully read all reports and determine the correct values according to the following rules:
+	1.	Patient ID
+Extract the unique identifier for the patient. This could be a code or number in the report.
+	2.	Age
+Provide the patient’s age in years. Use the value from the earliest report where age is mentioned.
+	3.	Sex
+Indicate the patient’s biological sex using the terms “male”, “female”.
+	4.	Diagnosis of Epilepsy or Seizures
+Indicate whether the patient has a diagnosis of epilepsy or has experienced seizures. Answer should be “yes” or “no”.
+	5.	Focal Epilepsy
+If epilepsy is present, indicate whether it is focal in nature. “yes” or “no”.
+	6.	Generalized Epilepsy
+If epilepsy is present, indicate whether it is generalized. “yes” or “no”.
+	7.	Current Medications
+List the generic names of medications the patient is currently taking. Include dose and dose unit (e.g., “levetiracetam 500 mg BID”).
+Use the most recent report that contains this information.
+	8.	Previous Medications
+List medications that the patient used in the past but discontinued. Include the name, dose (if mentioned), and the reason for discontinuation.
+Example: “valproate 500 mg - discontinued due to weight gain.”
+	9.	Seizure Frequency
+Provide seizure frequency in number of seizures per month.
+Example: “3 per month”.
+	10.	Duration of Epilepsy
+Report how long the patient has had epilepsy, in years.
+Example: “10 years”.
+	11.	Status Epilepticus
+Indicate if the patient has ever experienced status epilepticus. “yes” or “no”.
+	12.	Seizure Location
+Report anatomical location(s) of the seizures if mentioned.
+Examples: “left temporal”, “bilateral frontal”.
+	13.	Hippocampal Sclerosis
+Indicate presence of hippocampal sclerosis. “yes”, “no”, or “unknown”.
+	14.	Focal Cortical Dysplasia
+Indicate presence of focal cortical dysplasia. “yes”, “no”, or “unknown”.
+	15.	Febrile Seizures
+Indicate whether the patient had febrile seizures in childhood. “yes”, “no”, or “unknown”.
+	16.	Ischemic Stroke
+Indicate whether the patient had an ischemic stroke. “yes”, “no”, or “unknown”.
+	17.	Hemorrhagic Stroke
+Indicate whether the patient had a hemorrhagic stroke. “yes”, “no”, or “unknown”.
+	18.	Traumatic Brain Injury
+Indicate whether the patient had a traumatic brain injury. “yes”, “no”, or “unknown”.
+	19.	Neuroinfection
+Indicate whether the patient had a neuroinfection (e.g., meningitis, encephalitis). “yes”, “no”, or “unknown”.
+	20.	Psychiatric Comorbidity
+Indicate if the patient has any psychiatric conditions such as depression, anxiety, or bipolar disorder.
+Example: “Major depressive disorder”.
+	21.	Heart Failure
+Indicate whether the patient has heart failure. “yes”, “no”, or “unknown”.
+	22.	Diabetes Mellitus
+Indicate whether the patient has diabetes. “yes”, “no”, or “unknown”.
+	23.	Earliest Report Date
+Extract the date of the earliest report. Use format YYYY-MM-DD.
+	24.	Latest Report Date
+Extract the date of the most recent report. Use format YYYY-MM-DD.
+	25.	Drug-Resistant Epilepsy
+Indicate if the epilepsy is refractory (i.e., seizures continue despite trial of at least two medications). “yes” or “no”.
+	26.	Seizure-Free Status
+Indicate whether the patient is currently seizure-free. “yes” or “no”.
+	27.	Last Seizure Date
+If provided, extract the date of the patient’s last seizure. Use format YYYY-MM-DD.
+	28.	MRI Abnormal
+Indicate whether the MRI was described as abnormal. “yes” or “no”.
+	29.	MRI Findings Summary
+Provide a short summary of abnormal MRI findings.
+Example: “mesial temporal sclerosis on the left side”.
+	30.	Interictal Spikes Present
+Indicate if EEG reports show interictal epileptiform discharges (spikes or sharp waves). “yes”, “no”, or “unknown”.
+	31.	Ictal Pattern Captured
+Indicate whether an ictal EEG pattern was captured during a seizure. “yes”, “no”, or “unknown”.
+	32.	EEG Lateralization
+Describe any reported lateralization from EEG findings.
+Example: “right temporal”, “generalized”.
+	33.	Epilepsy Surgery Done
+Indicate if the patient has undergone epilepsy surgery. “yes” or “no”.
+	34.	Type of Epilepsy Surgery
+If surgery was performed, describe the type.
+Example: “anterior temporal lobectomy”.
+	35.	Surgical Outcome
+Report the outcome if mentioned, such as Engel class or percent seizure reduction.
+Example: “Engel class I”.
+	36.	Driving Status
+Indicate whether the patient is currently cleared to drive or has restrictions due to epilepsy.
+	37.	Working Status
+Describe the patient’s working status: employed, student, unemployed, or on disability.
+	38.	Quality of Life Comments
+Summarize any remarks about functional status or impact of epilepsy on daily life, social life, or well-being.
+
+If any information is missing or not found in the reports, explicitly state “not mentioned” for that variable.
+
+Do not guess or make assumptions. Use only information present in the text.

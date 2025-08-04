@@ -6,6 +6,10 @@ import sys
 import pandas as pd
 import ollama
 from pydantic import BaseModel, Field
+import datetime as datetime
+
+from typing import List, Optional
+from datetime import date
 
 
 PROMPT_FILES = {
@@ -14,23 +18,85 @@ PROMPT_FILES = {
     "MS": "prompts/ms_prompt.txt"
 }
 
+
 class EpilepsyDiagnosis(BaseModel):
     is_focal: bool = Field(description="Indicates if the epilepsy is focal.")
-    seizure_frequency: int | None = Field(description="Frequency of seizures experienced by the patient, measured in times per month.")
+    seizure_frequency: Optional[float] = Field(description="Seizure frequency, in times per month (e.g., 1.5).")
+    duration_epilepsy: Optional[int] = Field(description="Duration of epilepsy in years.")
+    ever_status_epilepsy: bool = Field(description="Whether the patient has ever had a status epilepticus.")
+    location_epilepsy: Optional[str] = Field(description="Anatomical seizure origin (e.g., temporal, frontal, multilobar).")
+    hippocampal_sclerosis_present: bool = Field(description="Whether hippocampal sclerosis is present.")
+    focal_cortical_dysplasia_present: bool = Field(description="Whether focal cortical dysplasia is present.")
+    refractory_epilepsy: Optional[bool] = Field(description="Whether epilepsy is drug-resistant (failed at least 2 ASMs).")
+    seizure_free: Optional[bool] = Field(description="Whether the patient is currently seizure-free.")
+    last_seizure_date: Optional[date] = Field(description="Date of last seizure (YYYY-MM-DD), if known.")
 
 class Medication(BaseModel):
-    name: str = Field(description="Name of the medication.")
-    dose: float | None = Field(default=None, description="Dose of the medication, if known.")
-    dose_unit: str | None = Field(default=None, description="Unit of the dose, if known.")
+    name: str = Field(description="Generic name of the medication.")
+    dose: Optional[float] = Field(default=None, description="Dose, if available.")
+    dose_unit: Optional[str] = Field(default=None, description="Dose unit (e.g., mg, ml), if available.")
 
 class PreviousMedication(Medication):
-    reason_stopped: str | None = Field(default=None, description="Reason for stopping the medication, if known.")
+    reason_stopped: Optional[str] = Field(default=None, description="Reason for discontinuation, if known.")
 
-class PatientEplilepsyReport(BaseModel):
-    age: int | None = Field(description="Age of the patient, taken from the most recent report if there are multiple.")
-    epilepsy_diagnosis_present: bool = Field(description="Indicates if the patient has a diagnosis of epilepsy.")
-    medications: list[Medication] = Field(default_factory=list, description="List of medications the patient is currently taking, including their respective doses if available.")
-    previous_medications: list[PreviousMedication] = Field(default_factory=list, description="List of medications the patient has previously taken, including their respective reasons for stopping, if known.")
+class ImagingAndEEG(BaseModel):
+    mri_abnormal: Optional[bool] = Field(description="Whether the MRI was reported as abnormal.")
+    mri_findings_summary: Optional[str] = Field(description="Summary of abnormal MRI findings (e.g., MTS, lesions).")
+    interictal_spikes_present: Optional[bool] = Field(description="Presence of interictal epileptiform discharges on EEG.")
+    ictal_pattern: Optional[bool] = Field(description="Whether an ictal EEG pattern was captured.")
+    eeg_lateralization: Optional[str] = Field(description="EEG lateralization (e.g., left-sided, right-sided, generalized).")
+
+class EpilepsySurgery(BaseModel):
+    epilepsy_surgery_done: Optional[bool] = Field(description="Whether the patient underwent epilepsy surgery.")
+    surgery_type: Optional[str] = Field(description="Type of surgery (e.g., ATL, laser ablation).")
+    surgery_outcome: Optional[str] = Field(description="Reported outcome (e.g., Engel class, percent seizure reduction).")
+
+class SocialImpact(BaseModel):
+    driving_status: Optional[str] = Field(description="Driving clearance status (e.g., allowed, restricted).")
+    working_status: Optional[str] = Field(description="Employment or education status (e.g., working, studying, disability).")
+    quality_of_life_comments: Optional[str] = Field(description="Summary of any quality-of-life issues mentioned.")
+
+class MedicalHistory(BaseModel):
+    febrile_seizures: bool = Field(description="History of febrile seizures.")
+    ischemic_stroke: bool = Field(description="History of ischemic stroke.")
+    hemorraghic_stroke: bool = Field(description="History of hemorrhagic stroke.")
+    traumatic_brain_injury: bool = Field(description="History of TBI.")
+    neuroinfection: bool = Field(description="History of neuroinfection (e.g., meningitis, encephalitis).")
+    psychiatric_disorder: bool = Field(description="Presence of psychiatric comorbidity (e.g., depression, anxiety).")
+    heart_failure: bool = Field(description="History of heart failure.")
+    diabetes: bool = Field(description="History of diabetes mellitus.")
+
+class PatientEpilepsyReport(BaseModel):
+    patient_id: Optional[str] = Field(description="Patient unique identifier, if available.")
+    age: Optional[int] = Field(description="Patient age in years, ideally from the earliest report.")
+    sex: Optional[str] = Field(description="Sex of the patient (e.g., male, female).")
+    epilepsy_diagnosis_present: bool = Field(description="Whether the patient has a diagnosis of epilepsy or seizures.")
+    
+    # Dates from earliest/latest reports
+    earliest_report_date: Optional[date] = Field(description="Date of earliest report available (YYYY-MM-DD).")
+    latest_report_date: Optional[date] = Field(description="Date of most recent report available (YYYY-MM-DD).")
+
+    # Medications
+    medications: List[Medication] = Field(default_factory=list, description="Current ASMs from latest relevant report.")
+    previous_medications: List[PreviousMedication] = Field(default_factory=list, description="All previous ASMs and stop reasons, up to the current medication date.")
+
+    # Flattened epilepsy diagnosis fields
+    is_focal: bool
+    seizure_frequency: Optional[float]
+    duration_epilepsy: Optional[int]
+    ever_status_epilepsy: bool
+    location_epilepsy: Optional[str]
+    hippocampal_sclerosis_present: bool
+    focal_cortical_dysplasia_present: bool
+    refractory_epilepsy: Optional[bool]
+    seizure_free: Optional[bool]
+    last_seizure_date: Optional[date]
+
+    # Grouped components
+    medical_history: MedicalHistory
+    imaging_eeg: Optional[ImagingAndEEG]
+    epilepsy_surgery: Optional[EpilepsySurgery]
+    social_impact: Optional[SocialImpact]
 
 
 def select_prompt():
@@ -45,22 +111,24 @@ def load_prompt(filepath):
         return f.read()
 
 def query_llama(report_text, prompt_template):
-    full_prompt = prompt_template.replace("{report}", report_text)
+    system_prompt = prompt_template.replace("{report}", "")
     try:
         response = ollama.chat(
             model="llama3.2",
             messages=[
-                {"role": "system", "content": full_prompt},
-                {"role": "user", "content": ""}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": report_text}
             ],
-            format=PatientEplilepsyReport.model_json_schema(),
+            format="json"
         )
-        report = PatientEplilepsyReport.model_validate(json.loads(response["message"]["content"]))
+        data = json.loads(response["message"]["content"])
+        report = PatientEpilepsyReport.model_validate(data)
         print(report.model_dump_json(indent=2))
         return report.model_dump_json()
     except Exception as e:
         print(f"Error querying Llama: {str(e)}")
         return f"[ERROR: {str(e)}]"
+        
 
 def main():
     if len(sys.argv) < 2:
