@@ -1,95 +1,138 @@
-You are tasked with extracting specific patient information from a provided medical record text.
+You are an expert medical assistant. Your task is to extract detailed, structured information from a concatenation of clinical reports belonging to the same patient. The reports are stored in a CSV, with each unique patient having a single row.
+Each report may be from a different date, but they all pertain to the same patient. 
+Your goal is to extract accurate and comprehensive information, selecting the most appropriate value from all available content for each patient.
+Be exhaustive. Look at all columns for each patient.
 
-The input consists of a concatenation of multiple clinical reports from the same patient, sometimes across different dates. Your goal is to extract accurate and comprehensive information for each of the fields below, selecting the most appropriate value based on the relevant time context.
+Extract each variable below exactly using the given keys and types. Use the JSON format provided at the end. Do not explain or include any text outside the JSON. If a value is not present in any report, use null for numbers/dates and "" (empty string) for text fields.
 
-Carefully read all reports and determine the correct values according to the following rules:
-	1.	Patient ID
-Extract the unique identifier for the patient. This could be a code or number in the report.
-	2.	Age
-Provide the patient’s age in years. Use the value from the earliest report where age is mentioned.
-	3.	Sex
-Indicate the patient’s biological sex using the terms “male”, “female”.
-	4.	Diagnosis of Epilepsy or Seizures
-Indicate whether the patient has a diagnosis of epilepsy or has experienced seizures. Answer should be “yes” or “no”.
-	5.	Focal Epilepsy
-If epilepsy is present, indicate whether it is focal in nature. “yes” or “no”.
-	6.	Generalized Epilepsy
-If epilepsy is present, indicate whether it is generalized. “yes” or “no”.
-	7.	Current Medications
-List the generic names of medications the patient is currently taking. Include dose and dose unit (e.g., “levetiracetam 500 mg BID”).
-Use the most recent report that contains this information.
-	8.	Previous Medications
-List medications that the patient used in the past but discontinued. Include the name, dose (if mentioned), and the reason for discontinuation.
-Example: “valproate 500 mg - discontinued due to weight gain.”
-	9.	Seizure Frequency
-Provide seizure frequency in number of seizures per month.
-Example: “3 per month”.
-	10.	Duration of Epilepsy
-Report how long the patient has had epilepsy, in years.
-Example: “10 years”.
-	11.	Status Epilepticus
-Indicate if the patient has ever experienced status epilepticus. “yes” or “no”.
-	12.	Seizure Location
-Report anatomical location(s) of the seizures if mentioned.
-Examples: “left temporal”, “bilateral frontal”.
-	13.	Hippocampal Sclerosis
-Indicate presence of hippocampal sclerosis. “yes”, “no”, or “unknown”.
-	14.	Focal Cortical Dysplasia
-Indicate presence of focal cortical dysplasia. “yes”, “no”, or “unknown”.
-	15.	Febrile Seizures
-Indicate whether the patient had febrile seizures in childhood. “yes”, “no”, or “unknown”.
-	16.	Ischemic Stroke
-Indicate whether the patient had an ischemic stroke. “yes”, “no”, or “unknown”.
-	17.	Hemorrhagic Stroke
-Indicate whether the patient had a hemorrhagic stroke. “yes”, “no”, or “unknown”.
-	18.	Traumatic Brain Injury
-Indicate whether the patient had a traumatic brain injury. “yes”, “no”, or “unknown”.
-	19.	Neuroinfection
-Indicate whether the patient had a neuroinfection (e.g., meningitis, encephalitis). “yes”, “no”, or “unknown”.
-	20.	Psychiatric Comorbidity
-Indicate if the patient has any psychiatric conditions such as depression, anxiety, or bipolar disorder.
-Example: “Major depressive disorder”.
-	21.	Heart Failure
-Indicate whether the patient has heart failure. “yes”, “no”, or “unknown”.
-	22.	Diabetes Mellitus
-Indicate whether the patient has diabetes. “yes”, “no”, or “unknown”.
-	23.	Earliest Report Date
-Extract the date of the earliest report. Use format YYYY-MM-DD.
-	24.	Latest Report Date
-Extract the date of the most recent report. Use format YYYY-MM-DD.
-	25.	Drug-Resistant Epilepsy
-Indicate if the epilepsy is refractory (i.e., seizures continue despite trial of at least two medications). “yes” or “no”.
-	26.	Seizure-Free Status
-Indicate whether the patient is currently seizure-free. “yes” or “no”.
-	27.	Last Seizure Date
-If provided, extract the date of the patient’s last seizure. Use format YYYY-MM-DD.
-	28.	MRI Abnormal
-Indicate whether the MRI was described as abnormal. “yes” or “no”.
-	29.	MRI Findings Summary
-Provide a short summary of abnormal MRI findings.
-Example: “mesial temporal sclerosis on the left side”.
-	30.	Interictal Spikes Present
-Indicate if EEG reports show interictal epileptiform discharges (spikes or sharp waves). “yes”, “no”, or “unknown”.
-	31.	Ictal Pattern Captured
-Indicate whether an ictal EEG pattern was captured during a seizure. “yes”, “no”, or “unknown”.
-	32.	EEG Lateralization
-Describe any reported lateralization from EEG findings.
-Example: “right temporal”, “generalized”.
-	33.	Epilepsy Surgery Done
-Indicate if the patient has undergone epilepsy surgery. “yes” or “no”.
-	34.	Type of Epilepsy Surgery
-If surgery was performed, describe the type.
-Example: “anterior temporal lobectomy”.
-	35.	Surgical Outcome
-Report the outcome if mentioned, such as Engel class or percent seizure reduction.
-Example: “Engel class I”.
-	36.	Driving Status
-Indicate whether the patient is currently cleared to drive or has restrictions due to epilepsy.
-	37.	Working Status
-Describe the patient’s working status: employed, student, unemployed, or on disability.
-	38.	Quality of Life Comments
-Summarize any remarks about functional status or impact of epilepsy on daily life, social life, or well-being.
+Instructions for each variable:
 
-If any information is missing or not found in the reports, explicitly state “not mentioned” for that variable.
+- patient_id: Extract the unique patient identifier if present.
+- age: Age in years, using the earliest report mentioning it. If not mentioned, find date of birth and calculate age from the earliest report date. If neither is available, use null
+- sex: “male” or “female”. 
+- epilepsy_diagnosis_present: "true" if epilepsy or seizures are diagnosed or discussed, else "false".
+- earliest_report_date: Date of the earliest report in the format YYYY-MM-DD.
+- latest_report_date: Date of the latest report in the format YYYY-MM-DD.
 
-Do not guess or make assumptions. Use only information present in the text.
+Antiseizure Medications:
+- medications: List current antiseizure medications from the column MEDIAUS , including name, dose, and dose unit (e.g., mg, ml). Use generic names. If dose is unknown or not mentioned, use null, not an empty string.
+
+- previous_medications: List all discontinued medications foud in MEDIEIN with name, dose (if available), dose unit, and reason for stopping (e.g., “rash”). If dose is unknown or not mentioned, use null, not an empty string. The previous medication can not be the same as current medications. If no previous medications are mentioned, use an empty list.
+
+  - name: Generic name of the medication.
+  - dose: Numeric value of the dose (e.g., 100).
+  - dose_unit: Unit of the dose (e.g., mg, ml).
+  - reason_stopped: Reason for stopping the medication (e.g., "rash", "ineffective"). If not mentioned, use an empty string.
+
+If dose or dose_unit are not mentioned, use null and empty string respectively. Do not use empty strings for dose.
+
+Epilepsy-related:
+- is_focal: true/false – Is the epilepsy focal?
+- seizure_frequency: Number of seizures per month (float). Use average or most recent value.
+- duration_epilepsy: Duration of epilepsy in years (integer). 
+- ever_status_epilepsy: true/false – Has the patient ever had status epilepticus? non convulsive or convulsive status epilepticus count as true.
+- location_epilepsy: Text description of anatomical origin (e.g., "left temporal").
+- hippocampal_sclerosis_present: true/false – Mention of hippocampal sclerosis?
+- focal_cortical_dysplasia_present: true/false – Mention of FCD?
+- refractory_epilepsy: true/false – Failed ≥2 ASMs?
+- seizure_free: true/false – Seizure-free currently?
+- last_seizure_date: Date of last seizure, if mentioned (YYYY-MM-DD).
+
+Medical history:
+Has the patient had any of the following conditions? Use true/false:
+- febrile_seizures: true/false
+- ischemic_stroke: true/false
+- hemorraghic_stroke: true/false
+- traumatic_brain_injury: true/false
+- neuroinfection: true/false (e.g., meningitis, encephalitis)
+- psychiatric_disorder: true/false
+- heart_failure: true/false
+- diabetes: true/false
+
+All boolean fields must be either true or false. Do not leave them null or blank.
+
+Imaging and EEG:
+- mri_abnormal: true/false
+- mri_findings_summary: Text description of MRI abnormalities (e.g., "mesial sclerosis").
+- interictal_spikes_present: true/false
+- ictal_pattern: true/false – Ictal activity recorded?
+- eeg_lateralization: e.g., "right temporal", "generalized", etc.
+
+All boolean fields must be either true or false or null if not mentioned.
+
+Epilepsy surgery:
+- epilepsy_surgery_done: true/false – Has surgery been done?
+- surgery_type: e.g., "ATL", "laser ablation".
+- surgery_outcome: Text summary of outcome (e.g., "Engel Class I").
+
+All boolean fields must be either true or false. Do not leave them null or blank.
+
+Social impact:
+- driving_status: e.g., "allowed", "restricted", or "not mentioned".
+- working_status: e.g., "working", "on disability", etc.
+- quality_of_life_comments: Any qualitative comment about quality of life.
+
+Use this exact JSON format:
+
+{
+  "patient_id": "",
+  "age": null,
+  "sex": "",
+  "epilepsy_diagnosis_present": false,
+  "earliest_report_date": "",
+  "latest_report_date": "",
+  "medications": [
+    {
+      "name": "",
+      "dose": null,
+      "dose_unit": ""
+    }
+  ],
+  "previous_medications": [
+    {
+      "name": "",
+      "dose": null,
+      "dose_unit": "",
+      "reason_stopped": ""
+    }
+  ],
+  "is_focal": false,
+  "seizure_frequency": null,
+  "duration_epilepsy": null,
+  "ever_status_epilepsy": false,
+  "location_epilepsy": "",
+  "hippocampal_sclerosis_present": false,
+  "focal_cortical_dysplasia_present": false,
+  "refractory_epilepsy": false,
+  "seizure_free": false,
+  "last_seizure_date": "",
+  "medical_history": {
+    "febrile_seizures": false,
+    "ischemic_stroke": false,
+    "hemorraghic_stroke": false,
+    "traumatic_brain_injury": false,
+    "neuroinfection": false,
+    "psychiatric_disorder": false,
+    "heart_failure": false,
+    "diabetes": false
+  },
+  "imaging_eeg": {
+    "mri_abnormal": false,
+    "mri_findings_summary": "",
+    "interictal_spikes_present": false,
+    "ictal_pattern": false,
+    "eeg_lateralization": ""
+  },
+  "epilepsy_surgery": {
+    "epilepsy_surgery_done": false,
+    "surgery_type": "",
+    "surgery_outcome": ""
+  },
+  "social_impact": {
+    "driving_status": "",
+    "working_status": "",
+    "quality_of_life_comments": ""
+  }
+}
+
+Output must be a single JSON object, strictly matching the schema. Do not include explanations, commentary, or markdown formatting. Return only the JSON object.

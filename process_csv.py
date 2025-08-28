@@ -1,134 +1,140 @@
-# process_csv.py
 import json
 import os
 import sys
-
 import pandas as pd
 import ollama
-from pydantic import BaseModel, Field
-import datetime as datetime
-
-from typing import List, Optional
 from datetime import date
-
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 PROMPT_FILES = {
-    "Epilepsy": "prompts/epilepsy_prompt.txt",
-    "Stroke": "prompts/stroke_prompt.txt",
-    "MS": "prompts/ms_prompt.txt"
+    "Epilepsy": "prompts/epilepsy_prompt.txt"
 }
 
 
-class EpilepsyDiagnosis(BaseModel):
-    is_focal: bool = Field(description="Indicates if the epilepsy is focal.")
-    seizure_frequency: Optional[float] = Field(description="Seizure frequency, in times per month (e.g., 1.5).")
-    duration_epilepsy: Optional[int] = Field(description="Duration of epilepsy in years.")
-    ever_status_epilepsy: bool = Field(description="Whether the patient has ever had a status epilepticus.")
-    location_epilepsy: Optional[str] = Field(description="Anatomical seizure origin (e.g., temporal, frontal, multilobar).")
-    hippocampal_sclerosis_present: bool = Field(description="Whether hippocampal sclerosis is present.")
-    focal_cortical_dysplasia_present: bool = Field(description="Whether focal cortical dysplasia is present.")
-    refractory_epilepsy: Optional[bool] = Field(description="Whether epilepsy is drug-resistant (failed at least 2 ASMs).")
-    seizure_free: Optional[bool] = Field(description="Whether the patient is currently seizure-free.")
-    last_seizure_date: Optional[date] = Field(description="Date of last seizure (YYYY-MM-DD), if known.")
-
 class Medication(BaseModel):
-    name: str = Field(description="Generic name of the medication.")
-    dose: Optional[float] = Field(default=None, description="Dose, if available.")
-    dose_unit: Optional[str] = Field(default=None, description="Dose unit (e.g., mg, ml), if available.")
+    name: str
+    dose: Optional[float] = None
+    dose_unit: str = ""
+
 
 class PreviousMedication(Medication):
-    reason_stopped: Optional[str] = Field(default=None, description="Reason for discontinuation, if known.")
+    reason_stopped: str = ""
 
-class ImagingAndEEG(BaseModel):
-    mri_abnormal: Optional[bool] = Field(description="Whether the MRI was reported as abnormal.")
-    mri_findings_summary: Optional[str] = Field(description="Summary of abnormal MRI findings (e.g., MTS, lesions).")
-    interictal_spikes_present: Optional[bool] = Field(description="Presence of interictal epileptiform discharges on EEG.")
-    ictal_pattern: Optional[bool] = Field(description="Whether an ictal EEG pattern was captured.")
-    eeg_lateralization: Optional[str] = Field(description="EEG lateralization (e.g., left-sided, right-sided, generalized).")
-
-class EpilepsySurgery(BaseModel):
-    epilepsy_surgery_done: Optional[bool] = Field(description="Whether the patient underwent epilepsy surgery.")
-    surgery_type: Optional[str] = Field(description="Type of surgery (e.g., ATL, laser ablation).")
-    surgery_outcome: Optional[str] = Field(description="Reported outcome (e.g., Engel class, percent seizure reduction).")
-
-class SocialImpact(BaseModel):
-    driving_status: Optional[str] = Field(description="Driving clearance status (e.g., allowed, restricted).")
-    working_status: Optional[str] = Field(description="Employment or education status (e.g., working, studying, disability).")
-    quality_of_life_comments: Optional[str] = Field(description="Summary of any quality-of-life issues mentioned.")
 
 class MedicalHistory(BaseModel):
-    febrile_seizures: bool = Field(description="History of febrile seizures.")
-    ischemic_stroke: bool = Field(description="History of ischemic stroke.")
-    hemorraghic_stroke: bool = Field(description="History of hemorrhagic stroke.")
-    traumatic_brain_injury: bool = Field(description="History of TBI.")
-    neuroinfection: bool = Field(description="History of neuroinfection (e.g., meningitis, encephalitis).")
-    psychiatric_disorder: bool = Field(description="Presence of psychiatric comorbidity (e.g., depression, anxiety).")
-    heart_failure: bool = Field(description="History of heart failure.")
-    diabetes: bool = Field(description="History of diabetes mellitus.")
+    febrile_seizures: bool
+    ischemic_stroke: bool
+    hemorraghic_stroke: bool
+    traumatic_brain_injury: bool
+    neuroinfection: bool
+    psychiatric_disorder: bool
+    heart_failure: bool
+    diabetes: bool
+
+
+class ImagingEEG(BaseModel):
+    mri_abnormal: bool
+    mri_findings_summary: str
+    interictal_spikes_present: bool
+    ictal_pattern: bool
+    eeg_lateralization: str
+
+
+class EpilepsySurgery(BaseModel):
+    epilepsy_surgery_done: bool
+    surgery_type: str
+    surgery_outcome: str
+
+
+class SocialImpact(BaseModel):
+    driving_status: str
+    working_status: str
+    quality_of_life_comments: str
+
 
 class PatientEpilepsyReport(BaseModel):
-    patient_id: Optional[str] = Field(description="Patient unique identifier, if available.")
-    age: Optional[int] = Field(description="Patient age in years, ideally from the earliest report.")
-    sex: Optional[str] = Field(description="Sex of the patient (e.g., male, female).")
-    epilepsy_diagnosis_present: bool = Field(description="Whether the patient has a diagnosis of epilepsy or seizures.")
-    
-    # Dates from earliest/latest reports
-    earliest_report_date: Optional[date] = Field(description="Date of earliest report available (YYYY-MM-DD).")
-    latest_report_date: Optional[date] = Field(description="Date of most recent report available (YYYY-MM-DD).")
-
-    # Medications
-    medications: List[Medication] = Field(default_factory=list, description="Current ASMs from latest relevant report.")
-    previous_medications: List[PreviousMedication] = Field(default_factory=list, description="All previous ASMs and stop reasons, up to the current medication date.")
-
-    # Flattened epilepsy diagnosis fields
+    patient_id: str
+    age: Optional[int]
+    sex: str
+    epilepsy_diagnosis_present: bool
+    earliest_report_date: str
+    latest_report_date: str
+    medications: List[Medication]
+    previous_medications: List[PreviousMedication]
     is_focal: bool
     seizure_frequency: Optional[float]
     duration_epilepsy: Optional[int]
     ever_status_epilepsy: bool
-    location_epilepsy: Optional[str]
+    location_epilepsy: str
     hippocampal_sclerosis_present: bool
     focal_cortical_dysplasia_present: bool
-    refractory_epilepsy: Optional[bool]
-    seizure_free: Optional[bool]
-    last_seizure_date: Optional[date]
-
-    # Grouped components
+    refractory_epilepsy: bool
+    seizure_free: bool
+    last_seizure_date: str
     medical_history: MedicalHistory
-    imaging_eeg: Optional[ImagingAndEEG]
-    epilepsy_surgery: Optional[EpilepsySurgery]
-    social_impact: Optional[SocialImpact]
+    imaging_eeg: ImagingEEG
+    epilepsy_surgery: EpilepsySurgery
+    social_impact: SocialImpact
 
-
-def select_prompt():
-    print("Select a disease prompt:")
-    for i, key in enumerate(PROMPT_FILES.keys()):
-        print(f"{i+1}. {key}")
-    idx = int(input("Enter choice: ")) - 1
-    return list(PROMPT_FILES.keys())[idx]
 
 def load_prompt(filepath):
     with open(filepath, "r") as f:
         return f.read()
 
+
 def query_llama(report_text, prompt_template):
     system_prompt = prompt_template.replace("{report}", "")
     try:
         response = ollama.chat(
-            model="llama3.2",
+            model="que",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": report_text}
             ],
-            format="json"
+            options={"temperature": 0}
         )
-        data = json.loads(response["message"]["content"])
-        report = PatientEpilepsyReport.model_validate(data)
-        print(report.model_dump_json(indent=2))
-        return report.model_dump_json()
+        content = response["message"]["content"]
+        content = content.strip()
+
+        # Try to extract JSON even if some text is around
+        try:
+            start = content.index("{")
+            end = content.rindex("}") + 1
+            json_str = content[start:end]
+            data = json.loads(json_str)
+        except Exception as e:
+            print("❌ JSON parsing failed")
+            return json.dumps({"error": f"Failed to parse JSON: {str(e)}", "raw": content})
+
+        try:
+            validated = PatientEpilepsyReport.model_validate(data)
+            flat_data = validated.model_dump()
+
+            # Print each top-level variable
+            print("🔍 Extracted variables:")
+            for key, value in flat_data.items():
+                if isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        print(f"  {key}.{sub_key}: {sub_value}")
+                elif isinstance(value, list):
+                    print(f"  {key}:")
+                    for item in value:
+                        print(f"    - {item}")
+                else:
+                    print(f"  {key}: {value}")
+
+            return json.dumps(flat_data, ensure_ascii=False)
+
+        except Exception as e:
+            print("❌ Validation failed")
+            return json.dumps({"error": f"Validation error: {str(e)}", "raw": json_str})
+
     except Exception as e:
-        print(f"Error querying Llama: {str(e)}")
-        return f"[ERROR: {str(e)}]"
-        
+        print("❌ Ollama call failed")
+
+        return json.dumps({"error": f"Ollama call failed: {str(e)}"})
+
 
 def main():
     if len(sys.argv) < 2:
@@ -147,9 +153,7 @@ def main():
         print("Missing required columns 'PATNR' or 'Beurteilung'")
         return
 
-    prompt_name = select_prompt()
-    prompt_text = load_prompt(PROMPT_FILES[prompt_name])
-
+    prompt_text = load_prompt(PROMPT_FILES["Epilepsy"])
     grouped = df.groupby("PATNR")
     outputs = []
 
@@ -165,9 +169,10 @@ def main():
         outputs.append({"PATNR": patnr, "structured_output": response})
 
     out_df = pd.DataFrame(outputs)
-    output_file = os.path.splitext(file_path)[0] + "_structured.csv"
+    output_file = os.path.splitext(file_path)[0] + "_structured_gpt.csv"
     out_df.to_csv(output_file, index=False)
     print(f"\n✅ Done. Output saved to {output_file}")
+
 
 if __name__ == "__main__":
     main()
